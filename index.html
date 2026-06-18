@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ฟอร์มบันทึกข้อมูลนักเรียน</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; font-family: 'ChulaCharas', sans-serif; }
+        .form-container { max-width: 600px; margin: 50px auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="form-container">
+        <h2 class="text-center mb-4 text-primary">ระบบบันทึกข้อมูลนักเรียน</h2>
+        
+        <form id="studentForm">
+            <div class="mb-3">
+                <label for="studentId" class="form-label">เลขประจำตัวนักเรียน (5 หลัก)</label>
+                <input type="text" class="form-control" id="studentId" name="studentId" pattern="\d{5}" maxlength="5" required placeholder="เช่น 12345">
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="prefix" class="form-label">คำนำหน้าชื่อ</label>
+                    <select class="form-select" id="prefix" name="prefix" required>
+                        <option value="" selected disabled>เลือก...</option>
+                        <option value="เด็กชาย">เด็กชาย</option>
+                        <option value="เด็กหญิง">เด็กหญิง</option>
+                        <option value="นาย">นาย</option>
+                        <option value="นางสาว">นางสาว</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="firstName" class="form-label">ชื่อ</label>
+                    <input type="text" class="form-control" id="firstName" name="firstName" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="lastName" class="form-label">นามสกุล</label>
+                    <input type="text" class="form-control" id="lastName" name="lastName" required>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="grade" class="form-label">ชั้นมัธยมศึกษาปีที่</label>
+                    <select class="form-select" id="grade" name="grade" required>
+                        <option value="" selected disabled>เลือก...</option>
+                        <option value="1">ม.1</option>
+                        <option value="2">ม.2</option>
+                        <option value="3">ม.3</option>
+                        <option value="4">ม.4</option>
+                        <option value="5">ม.5</option>
+                        <option value="6">ม.6</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="room" class="form-label">ห้อง</label>
+                    <input type="number" class="form-control" id="room" name="room" min="1" required placeholder="เช่น 1">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="number" class="form-label">เลขที่</label>
+                    <input type="number" class="form-control" id="number" name="number" min="1" required placeholder="เช่น 1">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="weight" class="form-label">น้ำหนัก (ก.ก.)</label>
+                    <input type="number" step="0.1" class="form-control" id="weight" name="weight" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="height" class="form-label">ส่วนสูง (ซ.ม.)</label>
+                    <input type="number" step="0.1" class="form-control" id="height" name="height" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-3">บันทึกข้อมูล</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // URL ของ Google Apps Script Web App ที่กำหนดมา
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyuE1LPtF22v_yiXIo-i-hJ0lklPAkZ2j_I6NKjy6mHWpkg8HlqLaSeX-eQVTsJviV5/exec';
+
+    document.getElementById('studentForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // ป้องกันการ Refresh หน้าจอตามปกติของฟอร์ม
+
+        // แสดง SweetAlert2 แจ้งสถานะกำลังโหลด (Loading)
+        Swal.fire({
+            title: 'กำลังบันทึกข้อมูล...',
+            text: 'กรุณารอสักครู่ระบบกำลังส่งข้อมูลไปยัง Google Sheets',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // ดึงข้อมูลจากฟอร์ม
+        const formData = new FormData(this);
+        const params = new URLSearchParams();
+
+        // นำข้อมูลในฟอร์มทั้งหมดแปลงเป็น Query Parameters
+        for (const [key, value] of formData.entries()) {
+            params.append(key, value);
+        }
+
+        // กำหนดชื่อฟังก์ชันสำหรับ JSONP Callback
+        const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
+        params.append('prefix_callback', callbackName);
+
+        // สร้างแท็ก <script> เพื่อยิงคำขอแบบ JSONP (หลีกเลี่ยง CORS)
+        const script = document.createElement('script');
+        script.src = `${scriptUrl}?${params.toString()}`;
+
+        // สร้างฟังก์ชัน Callback บน Window object ชั่วคราวเพื่อรับค่าตอบกลับ
+        window[callbackName] = function(response) {
+            // ลบแท็ก script และฟังก์ชันชั่วคราวออกเมื่อทำงานเสร็จเพื่อรักษา Memory
+            document.body.removeChild(script);
+            delete window[callbackName];
+
+            if (response.status === 'success') {
+                // แสดงสถานะสำเร็จเมื่อบันทึกสำเร็จ
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกสำเร็จ!',
+                    text: 'ข้อมูลนักเรียนถูกบันทึกลงชีตเรียบร้อยแล้ว',
+                    confirmButtonText: 'ตกลง'
+                });
+                document.getElementById('studentForm').reset(); // เคลียร์ฟอร์ม
+            } else {
+                // แสดงกรณีที่ระบบส่งค่าผิดพลาดกลับมา
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถบันทึกข้อมูลได้: ' + response.message
+                });
+            }
+        };
+
+        // ตรวจสอบกรณี Script ทำงานล้มเหลว (เช่น URL ผิด หรือเน็ตหลุด)
+        script.onerror = function() {
+            document.body.removeChild(script);
+            delete window[callbackName];
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่สามารถเชื่อมต่อกับ Server ได้ กรุณาลองใหม่อีกครั้ง'
+            });
+        };
+
+        // เพิ่มแท็ก script เข้าไปในหน้าเอกสารเพื่อเริ่มต้นการส่งข้อมูล
+        document.body.appendChild(script);
+    });
+</script>
+
+</body>
+</html>
